@@ -1,0 +1,37 @@
+{
+  "name": "mq-impact-tank",
+  "version": "0.0.1",
+  "description": "receive upsert & delete messages and perform them on mongo collection",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "cross-env DEBUG=api:* BASEURL_BRANCHES=http://localhost:8080/api/tree/branches/ nodemon --exec nodemon src/index.js",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlueForestTrees/mq-upsert-delete.git"
+  },
+  "keywords": [
+    "rabbit",
+    "mongo"
+  ],
+  "author": "slimee",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BlueForestTrees/mq-upsert-delete/issues"
+  },
+  "homepage": "https://github.com/BlueForestTrees/mq-upsert-delete#readme",
+  "dependencies": {
+    "debug": "4.1.1",
+    "mongo-registry": "1.0.21",
+    "request": "2.88.0",
+    "request-promise-native": "1.0.7",
+    "simple-rbmq": "2.0.2"
+  },
+  "devDependencies": {
+    "cross-env": "5.2.0",
+    "mocha": "6.0.2",
+    "nodemon": "1.18.10",
+    "rimraf": "2.6.3"
+  }
+}

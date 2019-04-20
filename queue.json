@@ -1,0 +1,7 @@
+{
+  "options": {
+    "exclusive": false,
+    "durable": false,
+    "autoDelete": false
+  }
+}

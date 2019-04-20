@@ -1,0 +1,13 @@
+{
+  "url": "amqp://localhost",
+  "exchange": {
+    "key": "BF-EXCHANGE",
+    "type": "direct",
+    "options": {
+      "durable": true
+    }
+  },
+  "channel": {
+    "prefetch": 10
+  }
+}
