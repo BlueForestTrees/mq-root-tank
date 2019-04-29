@@ -1,6 +1,6 @@
 {
   "name": "mq-impact-tank",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "receive upsert & delete messages and perform them on mongo collection",
   "main": "dist/index.js",
   "scripts": {
