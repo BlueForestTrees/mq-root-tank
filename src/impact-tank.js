@@ -8,11 +8,13 @@ const dbRegistry = require('./dbRegistry')
 let tanksDetails = null
 let tanks = null
 let tanksName = null
+let sendImpactTank = null
 
 const initCollections = () => {
     tanksDetails = db.col(ENV.DB_COLLECTION_DETAILS)
     tanks = db.col(ENV.DB_COLLECTION)
     tanksName = ENV.DB_COLLECTION
+    sendImpactTank = rbmq.createSender(ENV.RB.exchange, `${ENV.NAME}-upsert`)
 }
 
 db.dbInit(ENV, dbRegistry)
@@ -27,9 +29,9 @@ db.dbInit(ENV, dbRegistry)
     .catch(console.error)
 
 const onImpactUpsert = msg => upsertImpactTankDetail(msg).then(updateImpactTank)
-const onImpactDelete = msg => deleteImpactTankDetail(msg).then(deleteImpactTank).then(updateImpactTank)
+const onImpactDelete = msg => deleteImpactTankDetail(msg).then(updateImpactTank)
 const onRootUpsert = msg => upsertImpactTankDetails(msg).then(updateImpactTank)
-const onRootDelete = msg => deleteImpactTankDetails(msg).then(deleteImpactTank).then(updateImpactTank)
+const onRootDelete = msg => deleteImpactTankDetails(msg).then(updateImpactTank)
 
 //trunk += impact => trunk.branches += impact
 const upsertImpactTankDetail = async impact => {
@@ -56,7 +58,7 @@ const deleteImpactTankDetail = async impact => {
     const branchesId = (await getBranches(impact.trunkId)).map(b => b.trunkId)
     const impactsId = [impact.impactId]
 
-    await tanksDetails.deleteMany({trunkId: {$in: branchesId}, linkId: impact._id})
+    await tanksDetails.updateMany({trunkId: {$in: branchesId}, linkId: impact._id}, {$set: {bqt: null}})
 
     return {branchesId, impactsId}
 }
@@ -64,7 +66,7 @@ const deleteImpactTankDetail = async impact => {
 //trunk += root => trunk.branches.impactTank += root.impactTank
 const upsertImpactTankDetails = async ({trunkId, rootId, bqt}) => {
     const branches = await getBranches(trunkId, 1 / bqt)
-    const rootImpactTank = await tanksDetails.find({trunkId: rootId}).toArray()
+    const rootImpactTank = await tanksDetails.find({trunkId: rootId, bqt: {$ne: null}}).toArray()
     const writes = []
     forEach(branches, branch =>
         forEach(rootImpactTank, ({impactId, linkId, bqt}) =>
@@ -93,19 +95,25 @@ const deleteImpactTankDetails = async ({rootId, trunkId}) => {
     const impactsId = await tanks.distinct("impactId", {trunkId: rootId})
     const linksId = await tanksDetails.distinct("linkId", {trunkId: rootId})
 
-    await tanksDetails.deleteMany({trunkId: {$in: branchesId}, linkId: {$in: linksId}})
+    await tanksDetails.updateMany({trunkId: {$in: branchesId}, linkId: {$in: linksId}}, {$set: {bqt: null}})
 
     return {branchesId, impactsId}
 }
 
-const deleteImpactTank = ({branchesId, impactsId}) => tanks
-    .deleteMany({trunkId: {$in: branchesId}, impactId: {$in: impactsId}})
-    .then(() => ({branchesId, impactsId}))
+const updateImpactTank = async ({branchesId, impactsId}) => {
+    const impactTanks = await tanksDetails.aggregate([
+        {$match: {trunkId: {$in: branchesId}, impactId: {$in: impactsId}}},
+        {$project: {trunkId: 1, impactId: 1, bqt: 1, isBqtNull: {$cond: {if: {$gt: ['$bqt', null]}, then: 0, else: 1}}}},
+        {$group: {_id: {trunkId: "$trunkId", impactId: "$impactId"}, bqt: {$sum: "$bqt"}, bqtNullCount: {$sum: "$isBqtNull"}}},
+        {$project: {_id: 0, trunkId: "$_id.trunkId", impactId: "$_id.impactId", bqt: {$cond: ['$bqtNullCount', null, '$bqt']}, dateUpdate: new Date()}},
+    ]).toArray()
+    for (let i = 0; i < impactTanks.length; i++) {
+        impactTanks[i]._id = await getImpactTankId(impactTanks[i])
+        await sendImpactTank(impactTanks[i])
+    }
+}
 
-
-const updateImpactTank = ({branchesId, impactsId}) => tanksDetails.aggregate([
-    {$match: {trunkId: {$in: branchesId}, impactId: {$in: impactsId}}},
-    {$group: {_id: {trunkId: "$trunkId", impactId: "$impactId"}, bqt: {$sum: "$bqt"}}},
-    {$project: {_id: 0, trunkId: "$_id.trunkId", impactId: "$_id.impactId", bqt: "$bqt", dateUpdate: new Date()}},
-    {$out: {to: tanksName, mode: "replaceDocuments", uniqueKey: {trunkId: 1, impactId: 1}}}
-]).toArray()
+const getImpactTankId = async ({trunkId, impactId}) => {
+    const impactTank = await tanks.findOne({trunkId, impactId}, {projection: {_id: 1}})
+    return impactTank && impactTank._id || db.createObjectId()
+}
