@@ -113,7 +113,20 @@ const updateImpactTank = async ({branchesId, impactsId}) => {
     }
 }
 
+const impactTankCache = {}
 const getImpactTankId = async ({trunkId, impactId}) => {
-    const impactTank = await tanks.findOne({trunkId, impactId}, {projection: {_id: 1}})
-    return impactTank && impactTank._id || db.createObjectId()
+    const cachedKey = trunkId.toString() + impactId.toString()
+    const cached = impactTankCache[cachedKey]
+
+    if (cached) {
+        return cached
+    } else {
+        const impactTank = await tanks.findOne({trunkId, impactId}, {projection: {_id: 1}})
+        if (impactTank && impactTank._id) {
+            return impactTankCache[cachedKey] = impactTank._id
+        } else {
+            return impactTankCache[cachedKey] = db.createObjectId()
+        }
+    }
+
 }
