@@ -1,6 +1,6 @@
 {
   "name": "mq-impact-tank",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "receive upsert & delete messages and perform them on mongo collection",
   "main": "dist/index.js",
   "scripts": {
@@ -26,7 +26,7 @@
     "mongo-registry": "1.0.21",
     "request": "2.88.0",
     "request-promise-native": "1.0.7",
-    "simple-rbmq": "2.0.2"
+    "simple-rbmq": "2.0.6"
   },
   "devDependencies": {
     "cross-env": "5.2.0",

@@ -13,7 +13,7 @@ Object.assign(ENV, {
 })
 
 Object.assign(ENV, {
-    DB_COLLECTION_IMPACT: "impactCollection",
+    DB_COLLECTION_IMPACT: "impact",
     DB_COLLECTION: "impactTank",
     DB_COLLECTION_DETAILS: "impactTankDetails",
     DB_CONNECTION_STRING: process.env.DB_CONNECTION_STRING,
